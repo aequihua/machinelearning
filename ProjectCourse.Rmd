@@ -10,7 +10,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ##Synopsis
-Poner aqui el resumen de lo que haya visto.
+This document contains the details of the definition of a random-tree based machine learning model, which was used to predict the expected quality of workout ("how well weightlifting is done") based on a number of arm movement measures that can be read with the help of specialized devices (e.g. Nike Fuelband). 
+
+The resulting model takes over 50 predictor variables, and the outcome is a predicted "classe" that can take the values of A to E, where A is the "perfect" exercise and the other values represent common mistakes made by people when doing weight training. The accuracy of the model is higher than 99%, which is deemed good.
 
 ##Introduction
 This document describes a proposed model that was built to predict the "quality of workout done" (well done or done with mistakes), based on several variables that were measured on subjects wearing special devices (Nike Fuelband and so on), while performing specific weightlifting movements.
@@ -27,6 +29,9 @@ The input data comes in CSV format, in two files (training set and testing set).
 The code to load the training and testing data is shown below:
 ```{r load_data, echo=TRUE, results='hide', warning=FALSE, cache=FALSE}
   library(caret)
+  library(rpart)
+  library(e1071)
+  library(rpart.plot)
   wltrain <- read.csv("pml-training.csv")
   wltest <- read.csv("pml-testing.csv")
 ```
@@ -68,37 +73,44 @@ The following code performs the training process using the random forest method,
   fit <- train(classe ~ ., data=wltrain1, method="rf", trControl=fitControl)
 ```
 
-The below shows the fitted model result:
-
-```{r display_model, echo=FALSE, warning=FALSE, message=FALSE,cache=FALSE}
-   fit$finalModel
-```
-
 ##Model Final Version
 In order to decide upon the quality of the model, we now apply it to predict the "test data" (the subset of the training data set that was reserved). This is the prediction and the confusion matrix to assess the accuracy:
 
 ```{r predict_first, echo=TRUE, warning=FALSE, message=FALSE,cache=FALSE}
   preds <- predict(fit, newdata=wltrain2)
-  confusionMatrix(wltrain2$classe, preds)
+  cf <- confusionMatrix(wltrain2$classe, preds)
+  cf
 ```
 
-It can be seen that the accuracy of this model is `r fit$results$Accuracy` , which is considered adequate. So it is decided to keep this modelling method to predict the values of the test data.
+It can be seen that the accuracy of this model is `r cf$overall[1]` , which is considered adequate. So it is decided to keep this modelling method to predict the values of the test data.
 
-Now it is time to retrain the model with the same random forest method, using the entire training dataset, so that we use this model for the actual predictions of the test dataset:
+To that end, now it is time to retrain the model with the same random forest method, using the entire training dataset. In the following code we create this adjusted model:
 
 ```{r retrain_model, echo=TRUE, warning=FALSE, message=FALSE,cache=FALSE}
     fitControl <- trainControl(method="cv", number=3, verboseIter=F)
     fit <- train(classe ~ ., data=wltrain, method="rf", trControl=fitControl)
 ```
 
+The below shows the fitted model result:
+
+```{r display_model, echo=FALSE, warning=FALSE, message=FALSE,cache=FALSE}
+   fit$finalModel
+```
+
 ##Final Prediction on Test Dataset
-Finally, the predictions on the test dataset are executed and saved into text files so that they are fed to the class evaluation:
+The following is the code to run the predictions over the test dataset, and to display the results:
 
 ```{r predict_test, echo=TRUE, warning=FALSE, message=FALSE,cache=FALSE}
   # predict on test set
   preds <- predict(fit, newdata=wltest)
-  
-  # convert predictions to character vector
+  print(preds)
+```
+
+According to the results of the confusion matrix above, the accuracy of the model looks excellent and can be applied to further datasets.
+
+Finally, the predictions on the test dataset are executed and saved into text files so that they are fed to the class evaluation:
+
+```{r predict_savetofiles, echo=TRUE, warning=FALSE, message=FALSE,cache=FALSE}
   preds <- as.character(preds)
   
   # create function to write predictions to files
